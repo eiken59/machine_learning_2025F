@@ -71,34 +71,23 @@ class DerivWrapper(keras.Model):
         x_batch = tf.cast(x_batch, tf.float32)
         y_batch = tf.cast(y_batch, tf.float32)
 
-        with tf.GradientTape() as tape_outer:
-            tape_outer.watch(x_batch)
+        with tf.GradientTape(persistent=True) as tape:
+            tape.watch(x_batch)
             y_pred = self.net(x_batch, training=True)
 
             # function loss
             f_loss = self.mse(y_batch, y_pred)
 
-            # derivative loss via autodiff wrt inputs
-            dy_dx_pred = tape_outer.gradient(y_pred, x_batch)
+            # derivative loss
+            dy_dx_pred = tape.gradient(y_pred, x_batch)
             dy_dx_true = runge_prime_tf(x_batch)
             d_loss = self.mse(dy_dx_true, dy_dx_pred)
 
             total_loss = f_loss + self.lambda_deriv * d_loss
 
-        grads = tf.GradientTape().gradient if False else None  # (no-op line for clarity)
-        grads = tf.gradients(total_loss, self.net.trainable_variables)  # deprecated in eager
-        # Use proper tape to get grads
-        with tf.GradientTape() as tape:
-            tape.watch(self.net.trainable_variables)
-            # Recompute forward for grads (cheap for small nets). Alternatively, nest tapes.
-            y_pred2 = self.net(x_batch, training=True)
-            f_loss2 = self.mse(y_batch, y_pred2)
-            dy_dx_pred2 = tf.gradients(y_pred2, x_batch)[0]
-            d_loss2 = self.mse(runge_prime_tf(x_batch), dy_dx_pred2)
-            total_loss2 = f_loss2 + self.lambda_deriv * d_loss2
-        grads = tape.gradient(total_loss2, self.net.trainable_variables)
-
+        grads = tape.gradient(total_loss, self.net.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.net.trainable_variables))
+        del tape  # free resources
 
         # log
         self.loss_tracker.update_state(total_loss)
@@ -170,7 +159,7 @@ plt.plot(x_dense, dy_dx_true, label="True derivative f'(x)")
 plt.plot(x_dense, dy_dx_pred, label="NN derivative d/dx model(x)")
 plt.legend()
 plt.title("Derivative Approximation")
-plt.savefig(os.path.join(FIG_DIR, "runge_derivative_vs_nn.png"), transparent=True)
+plt.savefig(os.path.join(FIG_DIR, "runge_derivative_vs_nn_approximation.png"), transparent=True)
 
 # Loss curves (total, f, d)
 plt.figure(figsize=(7,5))
