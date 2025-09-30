@@ -172,7 +172,7 @@ def plot_validity_and_temp(meta: dict, grid: np.ndarray, fig_dir: str) -> Tuple[
 		Patch(facecolor="white", edgecolor="black", label="Invalid (0)"),
 		Patch(facecolor="black", edgecolor="black", label="Valid (1)"),
 	]
-	plt.legend(handles=legend_handles, title="Validity", loc="lower right", frameon=True)
+	plt.legend(handles=legend_handles, title="Validity", loc="upper left", frameon=True)
 	plt.xlabel("Longitude")
 	plt.ylabel("Latitude")
 	plt.title("Data Validity Map")
